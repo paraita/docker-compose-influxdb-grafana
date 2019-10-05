@@ -1,17 +1,19 @@
-version: '2'
+version: '3'
 services:
   influxdb:
     image: influxdb:latest
+    restart: unless-stopped
     ports:
       - '8086:8086'
     volumes:
       - influxdb-storage:/var/lib/influxdb
     environment:
-      - INFLUXDB_DB=db0
+      - INFLUXDB_DB=degage
       - INFLUXDB_ADMIN_USER=${INFLUXDB_USERNAME}
-      - INFLUXDB_ADMIN_PASSWORD=${INFLUXDB_PASSWORD}
+      - INFLUXDB_ADMIN_PASSiWORD=${INFLUXDB_PASSWORD}
   chronograf:
     image: chronograf:latest
+    restart: unless-stopped
     ports:
       - '127.0.0.1:8888:8888'
     volumes:
@@ -22,8 +24,11 @@ services:
       - INFLUXDB_URL=http://influxdb:8086
       - INFLUXDB_USERNAME=${INFLUXDB_USERNAME}
       - INFLUXDB_PASSWORD=${INFLUXDB_PASSWORD}
+    labels:
+      - 'traefik.enable=false'
   grafana:
     image: grafana/grafana:latest
+    restart: unless-stopped
     ports:
       - '3000:3000'
     volumes:
@@ -34,7 +39,19 @@ services:
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_USERNAME}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_PATHS_CONFIG=/etc/grafana/provisioning/grafana.ini
+    labels:
+      - 'traefik.http.routers.grafana.rule=Host(`monitoring.paraita.io`)'
+      - 'traefik.http.routers.grafana.entrypoints=websecure'
+      - 'traefik.http.routers.grafana.tls.certresolver=monitoring'
+      - 'traefik.port=3000'
+
 volumes:
   influxdb-storage:
   chronograf-storage:
   grafana-storage:
+
+networks:
+  default:
+    external:
+      name: traefik_default
